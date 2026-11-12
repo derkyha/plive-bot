@@ -1,0 +1,91 @@
+import flet as ft
+import urllib.request
+import urllib.parse
+import json
+import random
+import re
+from datetime import datetime
+
+
+class PliaveBot:
+    def __init__(self):
+        self.bot_name = "Плайв"
+        self.creator_name = "Коровкин Елисей"
+        self.last_topic = None
+        self.last_sentences = []
+        self.current_idx = 0
+        self.facts = ["🐙 У осьминогов три сердца.", "🍯 Мёд не портится.", "🍌 Банан — ягода.",
+                      "🪐 Венера вращается по часовой стрелке."]
+        self.jokes = ["Почему программисты не любят природу? Слишком много багов.",
+                      "— У меня в супе муха!\n— Паук в салате уже выехал."]
+
+    def get_response(self, text):
+        low = text.lower().strip()
+        if any(w in low for w in ['привет', 'здравствуй', 'хай', 'hello']): return "Привет! 👋"
+        if 'пока' in low: return "До свидания! 👋"
+        if 'кто ты' in low: return f"Я {self.bot_name}. Создатель — {self.creator_name}."
+        if 'который час' in low or 'какое время' in low: return f"🕒 {datetime.now().strftime('%H:%M:%S')}"
+        if 'факт' in low or 'удиви' in low: return random.choice(self.facts)
+        if 'анекдот' in low or 'шутка' in low: return random.choice(self.jokes)
+        if 'пароль' in low:
+            chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+            return "🔐 " + ''.join(random.choice(chars) for _ in range(16))
+        if 'погода' in low:
+            city = re.sub(r'(погода в|какая погода|прогноз погоды)', '', low).strip()
+            if not city: return "🌤️ Укажите город: 'погода Москва'"
+            try:
+                url = f"https://wttr.in/{urllib.parse.quote(city)}?format=4&lang=ru"
+                with urllib.request.urlopen(url, timeout=5) as r:
+                    return f"🌤️ {r.read().decode().strip()}"
+            except:
+                return "⚠️ Не удалось получить погоду"
+        if any(w in low for w in ['что такое', 'кто такой', 'расскажи', 'найди']):
+            q = re.sub(r'(что такое|кто такой|расскажи про|найди|расскажи о)', '', low).strip().rstrip('?!.')
+            if q:
+                try:
+                    url = f"https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(q)}&format=json&srlimit=1"
+                    with urllib.request.urlopen(url, timeout=10) as r:
+                        data = json.loads(r.read().decode())
+                        results = data.get('query', {}).get('search', [])
+                        if results: return f"📚 **{results[0].get('title', '')}**\n{results[0].get('snippet', '')[:200]}..."
+                except:
+                    pass
+            return "🤔 Не нашёл информации"
+        if 'расскажи подробнее' in low or 'продолжи' in low:
+            return "💬 Продолжение диалога в разработке"
+        return "🤔 Я пока учусь. Спросите: 'что такое Python' или 'погода Москва'"
+
+
+def main(page: ft.Page):
+    page.title = "Плайв"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 15
+    bot = PliaveBot()
+
+    chat = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True, spacing=8)
+    inp = ft.TextField(hint_text="Сообщение...", expand=True, border_radius=10)
+
+    def send(e):
+        msg = inp.value
+        if not msg: return
+        chat.controls.append(
+            ft.Container(ft.Text(f"👤 {msg}", color="white"), bgcolor="#1f3a5f", padding=10, border_radius=10,
+                         alignment=ft.alignment.center_right))
+        chat.controls.append(
+            ft.Container(ft.Text(f"🤖 {bot.get_response(msg)}", color="white"), bgcolor="#1f4f2f", padding=10,
+                         border_radius=10))
+        inp.value = ""
+        page.update()
+
+    chat.controls.append(
+        ft.Container(ft.Text("🤖 Плайв запущен!", color="white"), bgcolor="#1f4f2f", padding=10, border_radius=10))
+
+    page.add(
+        ft.Text("🤖 Плайв", size=24, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+        ft.Text(f"by {bot.creator_name}", size=12, color="grey", text_align=ft.TextAlign.CENTER),
+        chat,
+        ft.Row([inp, ft.ElevatedButton("→", on_click=send, bgcolor="blue", color="white")], spacing=8)
+    )
+
+
+ft.app(target=main)
