@@ -1,4 +1,3 @@
-.github/workflows/build.ym
 name: Build APK
 
 on:
