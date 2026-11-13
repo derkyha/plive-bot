@@ -1,1 +1,32 @@
 .github/workflows/build.ym
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install Flet
+      run: pip install flet[build]
+    
+    - name: Build APK
+      run: flet build apk --module-name plive
+    
+    - name: Save APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: plive-apk
+        path: 
+        build/apk/app/build/outputs/apk/debug/app-debug.apk
